@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SME - Sistema de Manutenção Escolar</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Supabase JS SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans antialiased min-h-screen flex flex-col">
+
+    <!-- CONFIGURAÇÃO DO SUPABASE (Substitua pelas suas credenciais) -->
+    <script>
+        const SUPABASE_URL = 'SUA_SUPABASE_URL';
+        const SUPABASE_ANON_KEY = 'SUA_SUPABASE_ANON_KEY';
+        
+        // Inicializa o cliente Supabase se as chaves estiverem configuradas
+        let supabaseClient = null;
+        if (SUPABASE_URL !== 'SUA_SUPABASE_URL' && SUPABASE_ANON_KEY !== 'SUA_SUPABASE_ANON_KEY') {
+            supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        }
+    </script>
+
+    <!-- CABEÇALHO / NAVBAR -->
+    <header class="bg-blue-900 text-white shadow-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center space-x-3 cursor-pointer" onclick="navigate('home')">
+                <div class="bg-blue-700 p-2 rounded-lg text-xl font-bold">
+                    <i class="fa-solid fa-screwdriver-wrench"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-tight">SME</h1>
+                    <p class="text-xs text-blue-200">Sistema de Manutenção Escolar</p>
+                </div>
+            </div>
+            
+            <nav class="hidden md:flex items-center space-x-6 text-sm font-medium">
+                <button onclick="navigate('home')" class="hover:text-blue-300 transition"><i class="fa-solid fa-house mr-1"></i> Início</button>
+                <button onclick="navigate('nova')" class="hover:text-blue-300 transition"><i class="fa-solid fa-plus-circle mr-1"></i> Abrir Solicitação</button>
+                <button onclick="navigate('consultar')" class="hover:text-blue-300 transition"><i class="fa-solid fa-magnifying-glass mr-1"></i> Consultar Protocolo</button>
+                <button onclick="navigate('painel')" class="hover:text-blue-300 transition"><i class="fa-solid fa-chart-pie mr-1"></i> Painel / Gestão</button>
+            </nav>
+
+            <!-- SELETOR DE PERFIL (Demonstração Acadêmica) -->
+            <div class="flex items-center space-x-2 bg-blue-800 px-3 py-1.5 rounded-lg text-xs">
+                <i class="fa-solid fa-user-shield"></i>
+                <span id="current-role-label">Perfil: Solicitante</span>
+                <select id="role-selector" onchange="changeRole(this.value)" class="bg-blue-700 text-white rounded px-1 py-0.5 outline-none cursor-pointer">
+                    <option value="SOLICITANTE">Solicitante</option>
+                    <option value="TECNICO">Técnico</option>
+                    <option value="ADMINISTRADOR">Administrador</option>
+                </select>
+            </div>
+        </div>
+    </header>
+
+    <!-- CONTEÚDO PRINCIPAL DINÂMICO -->
+    <main class="flex-grow max-w-7xl w-full mx-auto p-4 md:p-6">
+
+        <!-- 1. TELA INICIAL -->
+        <section id="view-home" class="view-section space-y-6">
+            <div class="bg-gradient-to-r from-blue-900 to-blue-700 text-white rounded-2xl p-8 shadow-lg flex flex-col md:flex-row justify-between items-center">
+                <div class="space-y-4 max-w-2xl">
+                    <span class="bg-blue-800 text-blue-200 text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wider">Projeto Integrador - 120h</span>
+                    <h2 class="text-3xl md:text-4xl font-extrabold tracking-tight">Gestão Inteligente de Manutenção Escolar</h2>
+                    <p class="text-blue-100 text-sm md:text-base">
+                        Plataforma web integrada para registro, acompanhamento e triagem de solicitações de infraestrutura e equipamentos escolares. Substitua planilhas e mensagens informais por um fluxo transparente e rastreável.
+                    </p>
+                    <div class="flex flex-wrap gap-3 pt-2">
+                        <button onclick="navigate('nova')" class="bg-white text-blue-900 font-semibold px-5 py-2.5 rounded-xl shadow hover:bg-blue-50 transition flex items-center">
+                            <i class="fa-solid fa-plus mr-2"></i> Abrir Solicitação
+                        </button>
+                        <button onclick="navigate('consultar')" class="bg-blue-800 border border-blue-600 text-white font-semibold px-5 py-2.5 rounded-xl hover:bg-blue-700 transition flex items-center">
+                            <i class="fa-solid fa-magnifying-glass mr-2"></i> Consultar Protocolo
+                        </button>
+                    </div>
+                </div>
+                <div class="mt-6 md:mt-0 text-blue-200 text-8xl opacity-80">
+                    <i class="fa-solid fa-school"></i>
+                </div>
+            </div>
+
+            <!-- AVISO DE EMERGÊNCIA -->
+            <div class="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-xl shadow-sm flex items-start space-x-3">
+                <div class="text-amber-600 text-xl mt-0.5"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                <div>
+                    <h3 class="font-bold text-amber-900">Aviso sobre Situações de Emergência</h3>
+                    <p class="text-sm text-amber-800">
+                        Problemas que representem risco imediato à integridade física (como fios expostos, cheiro forte de gás, vazamento intenso ou risco de desabamento) devem ser comunicados <strong>imediatamente à direção</strong> ou ao setor de segurança. O registro neste sistema não substitui a comunicação emergencial.
+                    </p>
+                </div>
+            </div>
+
+            <!-- CARDS DE ATALHO -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
+                <div onclick="navigate('nova')" class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition cursor-pointer group">
+                    <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center text-xl mb-4 group-hover:bg-blue-600 group-hover:text-white transition">
+                        <i class="fa-solid fa-file-pen"></i>
+                    </div>
+                    <h3 class="font-bold text-lg mb-1">1. Registrar Ocorrência</h3>
+                    <p class="text-sm text-gray-500">Informe o local, categoria e detalhes do problema para gerar seu número de protocolo instantaneamente.</p>
+                </div>
+
+                <div onclick="navigate('consultar')" class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition cursor-pointer group">
+                    <div class="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center text-xl mb-4 group-hover:bg-emerald-600 group-hover:text-white transition">
+                        <i class="fa-solid fa-timeline"></i>
+                    </div>
+                    <h3 class="font-bold text-lg mb-1">2. Acompanhar Status</h3>
+                    <p class="text-sm text-gray-500">Consulte o andamento da solicitação pelo número de protocolo e visualize o histórico completo de atualizações.</p>
+                </div>
+
+                <div onclick="navigate('painel')" class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition cursor-pointer group">
+                    <div class="w-12 h-12 bg-purple-100 text-purple-600 rounded-xl flex items-center justify-center text-xl mb-4 group-hover:bg-purple-600 group-hover:text-white transition">
+                        <i class="fa-solid fa-chart-column"></i>
+                    </div>
+                    <h3 class="font-bold text-lg mb-1">3. Gestão e Indicadores</h3>
+                    <p class="text-sm text-gray-500">Acesse o painel administrativo para gerenciar filas de atendimento, prioridades, status e relatórios.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. TELA DE ABERTURA DE SOLICITAÇÃO -->
+        <section id="view-nova" class="view-section hidden space-y-6">
+            <div class="max-w-3xl mx-auto bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8">
+                <div class="border-b pb-4 mb-6">
+                    <h2 class="text-2xl font-bold text-gray-900">Nova Solicitação de Manutenção</h2>
+                    <p class="text-sm text-gray-500">Preencha os campos abaixo para registrar um problema na infraestrutura ou equipamentos.</p>
+                </div>
+
+                <form id="form-solicitacao" onsubmit="enviarSolicitacao(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Título do Problema *</label>
+                        <input type="text" id="titulo" required placeholder="Ex: Projetor da sala 101 não liga" class="w-full border rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Local / Ambiente *</label>
+                            <select id="local_id" required class="w-full border rounded-xl px-4 py-2.5 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                                <option value="">Carregando locais...</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Categoria *</label>
+                            <select id="categoria_id" required class="w-full border rounded-xl px-4 py-2.5 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                                <option value="">Carregando categorias...</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Prioridade Sugerida *</label>
+                            <select id="prioridade" required class="w-full border rounded-xl px-4 py-2.5 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                                <option value="Baixa">Baixa</option>
+                                <option value="Média" selected>Média</option>
+                                <option value="Alta">Alta</option>
+                                <option value="Urgente">Urgente</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Foto Opcional (URL ou Arquivo)</label>
+                            <input type="text" id="foto_url" placeholder="Link da imagem (opcional)" class="w-full border rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Descrição Detalhada *</label>
+                        <textarea id="descricao" rows="4" required placeholder="Descreva o defeito, há quanto tempo ocorre e se impede o uso do local..." class="w-full border rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
+                    </div>
+
+                    <div class="flex justify-end space-x-3 pt-4 border-t">
+                        <button type="button" onclick="navigate('home')" class="px-5 py-2.5 border rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-100 transition">Cancelar</button>
+                        <button type="submit" id="btn-submit" class="px-6 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition shadow">Enviar Solicitação</button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <!-- 3. TELA DE CONSULTA DE PROTOCOLO -->
+        <section id="view-consultar" class="view-section hidden space-y-6">
+            <div class="max-w-3xl mx-auto bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8">
+                <div class="border-b pb-4 mb-6">
+                    <h2 class="text-2xl font-bold text-gray-900">Consultar Solicitação</h2>
+                    <p class="text-sm text-gray-500">Digite o número de protocolo para verificar o status e o histórico de atendimento.</p>
+                </div>
+
+                <div class="flex gap-2 mb-6">
+                    <input type="text" id="input-protocolo" placeholder="Ex: SME-2026-0001" class="flex-grow border rounded-xl px-4 py-2.5 text-sm uppercase focus:ring-2 focus:ring-blue-500 outline-none">
+                    <button onclick="consultarProtocolo()" class="bg-blue-600 text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 transition shadow flex items-center">
+                        <i class="fa-solid fa-search mr-2"></i> Buscar
+                    </button>
+                </div>
+
+                <!-- Resultado da Consulta -->
+                <div id="resultado-consulta" class="hidden space-y-6">
+                    <div class="bg-gray-50 border rounded-2xl p-5 space-y-3">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <span id="res-protocolo" class="bg-blue-100 text-blue-800 font-bold text-xs px-3 py-1 rounded-full"></span>
+                                <h3 id="res-titulo" class="text-lg font-bold text-gray-900 mt-2"></h3>
+                            </div>
+                            <span id="res-status" class="px-3 py-1 rounded-full text-xs font-semibold"></span>
+                        </div>
+                        <p id="res-descricao" class="text-sm text-gray-600"></p>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 pt-3 border-t text-xs text-gray-500">
+                            <div><strong>Local:</strong> <span id="res-local"></span></div>
+                            <div><strong>Categoria:</strong> <span id="res-categoria"></span></div>
+                            <div><strong>Prioridade:</strong> <span id="res-prioridade"></span></div>
+                            <div><strong>Data:</strong> <span id="res-data"></span></div>
+                        </div>
+                    </div>
+
+                    <!-- Linha do Tempo / Histórico -->
+                    <div>
+                        <h4 class="font-bold text-gray-800 mb-3 text-sm"><i class="fa-solid fa-clock-rotate-left mr-1"></i> Histórico de Atendimento</h4>
+                        <div id="res-historico" class="space-y-3 border-l-2 border-blue-200 pl-4 ml-2">
+                            <!-- Inserido via JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 4. PAINEL ADMINISTRATIVO / GESTÃO -->
+        <section id="view-painel" class="view-section hidden space-y-6">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-900">Painel de Gestão e Atendimento</h2>
+                    <p class="text-sm text-gray-500">Visão geral dos indicadores e gerenciamento das solicitações da escola.</p>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="carregarDadosPainel()" class="bg-white border text-gray-700 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-gray-50 transition shadow-sm">
+                        <i class="fa-solid fa-rotate mr-1"></i> Atualizar
+                    </button>
+                </div>
+            </div>
+
+            <!-- CARDS DE INDICADORES -->
+            <div class="grid grid-cols-2 md:grid-cols-6 gap-4">
+                <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+                    <p class="text-xs text-gray-500 font-medium">Total</p>
+                    <h3 id="stat-total" class="text-2xl font-bold text-gray-900 mt-1">0</h3>
+                </div>
+                <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+                    <p class="text-xs text-blue-600 font-medium">Abertas</p>
+                    <h3 id="stat-abertas" class="text-2xl font-bold text-blue-600 mt-1">0</h3>
+                </div>
+                <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+                    <p class="text-xs text-amber-600 font-medium">Em Análise</p>
+                    <h3 id="stat-analise" class="text-2xl font-bold text-amber-600 mt-1">0</h3>
+                </div>
+                <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+                    <p class="text-xs text-purple-600 font-medium">Em Atendimento</p>
+                    <h3 id="stat-atendimento" class="text-2xl font-bold text-purple-600 mt-1">0</h3>
+                </div>
+                <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+                    <p class="text-xs text-emerald-600 font-medium">Concluídas</p>
+                    <h3 id="stat-concluidas" class="text-2xl font-bold text-emerald-600 mt-1">0</h3>
+                </div>
+                <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+                    <p class="text-xs text-red-600 font-medium">Urgentes</p>
+                    <h3 id="stat-urgentes" class="text-2xl font-bold text-red-600 mt-1">0</h3>
+                </div>
+            </div>
+
+            <!-- FILTROS E TABELA -->
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
+                <div class="flex flex-col md:flex-row justify-between gap-4">
+                    <h3 class="font-bold text-lg text-gray-900">Fila de Solicitações</h3>
+                    <div class="flex flex-wrap gap-2">
+                        <select id="filtro-status" onchange="filtrarTabela()" class="border rounded-xl px-3 py-1.5 text-sm bg-white outline-none">
+                            <option value="">Todos os Status</option>
+                            <option value="Aberta">Aberta</option>
+                            <option value="Em análise">Em análise</option>
+                            <option value="Aguardando atendimento">Aguardando atendimento</option>
+                            <option value="Em atendimento">Em atendimento</option>
+                            <option value="Concluída">Concluída</option>
+                        </select>
+                        <select id="filtro-prioridade" onchange="filtrarTabela()" class="border rounded-xl px-3 py-1.5 text-sm bg-white outline-none">
+                            <option value="">Todas as Prioridades</option>
+                            <option value="Baixa">Baixa</option>
+                            <option value="Média">Média</option>
+                            <option value="Alta">Alta</option>
+                            <option value="Urgente">Urgente</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b text-xs font-semibold text-gray-500 uppercase bg-gray-50">
+                                <th class="p-3">Protocolo</th>
+                                <th class="p-3">Título / Local</th>
+                                <th class="p-3">Categoria</th>
+                                <th class="p-3">Prioridade</th>
+                                <th class="p-3">Status</th>
+                                <th class="p-3">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabela-solicitacoes" class="divide-y text-sm">
+                            <tr>
+                                <td colspan="6" class="p-4 text-center text-gray-500">Carregando solicitações...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- MODAL DE ATUALIZAÇÃO (TÉCNICO / ADMIN) -->
+    <div id="modal-atualizar" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-xl">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h3 class="font-bold text-lg text-gray-900">Atualizar Atendimento</h3>
+                <button onclick="fecharModal()" class="text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <input type="hidden" id="modal-solicitacao-id">
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">Novo Status</label>
+                <select id="modal-novo-status" class="w-full border rounded-xl px-4 py-2.5 text-sm bg-white outline-none">
+                    <option value="Aberta">Aberta</option>
+                    <option value="Em análise">Em análise</option>
+                    <option value="Aguardando atendimento">Aguardando atendimento</option>
+                    <option value="Em atendimento">Em atendimento</option>
+                    <option value="Concluída">Concluída</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">Observação Técnica / Serviço Executado *</label>
+                <textarea id="modal-observacao" rows="3" required placeholder="Descreva o procedimento realizado ou motivo da alteração..." class="w-full border rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+            </div>
+            <div class="flex justify-end space-x-3 pt-3 border-t">
+                <button type="button" onclick="fecharModal()" class="px-4 py-2 border rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-100">Cancelar</button>
+                <button type="button" onclick="salvarAtualizacao()" class="px-5 py-2 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 shadow">Salvar Alteração</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- RODAPÉ -->
+    <footer class="bg-white border-t mt-12 py-6 text-center text-xs text-gray-500">
+        <p>CETI Malaquias Ribeiro Damasceno – Curso Técnico em Análise e Desenvolvimento de Sistemas (2026)</p>
+        <p class="mt-1">Sistema de Manutenção Escolar (SME) • Desenvolvido para hospedagem em GitHub e Supabase.</p>
+    </footer>
+
+    <!-- LÓGICA DA APLICAÇÃO -->
+    <script>
+        let currentRole = 'SOLICITANTE';
+        let listaGlobalSolicitacoes = [];
+
+        // Controle de navegação entre telas
+        function navigate(viewName) {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
+            const target = document.getElementById(`view-${viewName}`);
+            if (target) {
+                target.classList.remove('hidden');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+            if (viewName === 'nova') carregarCombosFormulario();
+            if (viewName === 'painel') carregarDadosPainel();
+        }
+
+        function changeRole(role) {
+            currentRole = role;
+            document.getElementById('current-role-label').innerText = `Perfil: ${role.charAt(0) + role.slice(1).toLowerCase()}`;
+        }
+
+        // Mock de dados locais caso o Supabase não esteja conectado
+        let mockLocais = [
+            { id: 'loc-1', ambiente: 'Sala 101 - Bloco A' },
+            { id: 'loc-2', ambiente: 'Laboratório de Informática 01' },
+            { id: 'loc-3', ambiente: 'Biblioteca Central' }
+        ];
+        let mockCategorias = [
+            { id: 'cat-1', nome: 'Equipamentos de informática' },
+            { id: 'cat-2', nome: 'Instalações elétricas' },
+            { id: 'cat-3', nome: 'Climatização' }
+        ];
+        let mockSolicitacoes = [
+            {
+                id: 'sol-1',
+                protocolo: 'SME-2026-0001',
+                titulo: 'Projetor não liga',
+                descricao: 'O projetor da sala 101 não acende a lâmpada ao conectar.',
+                local_id: 'loc-1',
+                categoria_id: 'cat-1',
+                prioridade: 'Alta',
+                status: 'Em atendimento',
+                created_at: new Date().toISOString(),
+                locais: { ambiente: 'Sala 101 - Bloco A' },
+                categorias: { nome: 'Equipamentos de informática' },
+                historico: [
+                    { status_novo: 'Aberta', observacao: 'Solicitação criada.', created_at: new Date().toISOString(), usuarios: { nome: 'Maria Solicitante' } },
+                    { status_novo: 'Em atendimento', observacao: 'Técnico encaminhado ao local.', created_at: new Date().toISOString(), usuarios: { nome: 'Carlos Técnico' } }
+                ]
+            }
+        ];
+
+        // Carregar locais e categorias no formulário
+        async function carregarCombosFormulario() {
+            const selectLocal = document.getElementById('local_id');
+            const selectCat = document.getElementById('categoria_id');
+            
+            selectLocal.innerHTML = '<option value="">Selecione o local...</option>';
+            selectCat.innerHTML = '<option value="">Selecione a categoria...</option>';
+
+            if (supabaseClient) {
+                const { data: locais } = await supabaseClient.from('locais').select('*');
+                const { data: categorias } = await supabaseClient.from('categorias').select('*');
+                
+                if (locais) locais.forEach(l => selectLocal.innerHTML += `<option value="${l.id}">${l.ambiente} (${l.bloco || ''})</option>`);
+                if (categorias) categorias.forEach(c => selectCat.innerHTML += `<option value="${c.id}">${c.nome}</option>`);
+            } else {
+                mockLocais.forEach(l => selectLocal.innerHTML += `<option value="${l.id}">${l.ambiente}</option>`);
+                mockCategorias.forEach(c => selectCat.innerHTML += `<option value="${c.id}">${c.nome}</option>`);
+            }
+        }
+
+        // Enviar nova solicitação
+        async function enviarSolicitacao(e) {
+            e.preventDefault();
+            const titulo = document.getElementById('titulo').value;
+            const descricao = document.getElementById('descricao').value;
+            const local_id = document.getElementById('local_id').value;
+            const categoria_id = document.getElementById('categoria_id').value;
+            const prioridade = document.getElementById('prioridade').value;
+            const foto_url = document.getElementById('foto_url').value;
+            
+            const protocolo = 'SME-2026-' + Math.floor(1000 + Math.random() * 9000);
+
+            if (supabaseClient) {
+                // Inserir no Supabase
+                const { data, error } = await supabaseClient.from('solicitacoes').insert([
+                    { protocolo, titulo, descricao, local_id, categoria_id, prioridade, status: 'Aberta', foto_url }
+                ]).select();
+
+                if (error) {
+                    alert('Erro ao salvar solicitação: ' + error.message);
+                    return;
+                }
+            } else {
+                // Modo Mock
+                const novoObj = { id: 'sol-' + Date.now(), protocolo, titulo, descricao, local_id, categoria_id, prioridade, status: 'Aberta', created_at: new Date().toISOString() };
+                mockSolicitacoes.unshift(novoObj);
+            }
+
+            alert(`Solicitação enviada com sucesso!\n\nNúmero do Protocolo: ${protocolo}`);
+            document.getElementById('form-solicitacao').reset();
+            navigate('consultar');
+            document.getElementById('input-protocolo').value = protocolo;
+            consultarProtocolo();
+        }
+
+        // Consultar protocolo
+        async function consultarProtocolo() {
+            const proto = document.getElementById('input-protocolo').value.trim().toUpperCase();
+            if (!proto) return alert('Digite um número de protocolo válido.');
+
+            let sol = null;
+
+            if (supabaseClient) {
+                const { data, error } = await supabaseClient
+                    .from('solicitacoes')
+                    .select('*, locais(ambiente), categorias(nome)')
+                    .eq('protocolo', proto)
+                    .single();
+                if (data) sol = data;
+            } else {
+                sol = mockSolicitacoes.find(s => s.protocolo === proto);
+            }
+
+            const container = document.getElementById('resultado-consulta');
+            if (!sol) {
+                alert('Nenhuma solicitação encontrada com este protocolo.');
+                container.classList.add('hidden');
+                return;
+            }
+
+            container.classList.remove('hidden');
+            document.getElementById('res-protocolo').innerText = sol.protocolo;
+            document.getElementById('res-titulo').innerText = sol.titulo;
+            document.getElementById('res-descricao').innerText = sol.descricao;
+            document.getElementById('res-local').innerText = sol.locais?.ambiente || 'Local não informado';
+            document.getElementById('res-categoria').innerText = sol.categorias?.nome || 'Categoria não informada';
+            document.getElementById('res-prioridade').innerText = sol.prioridade;
+            document.getElementById('res-data').innerText = new Date(sol.created_at).toLocaleDateString('pt-BR');
+
+            const statusBadge = document.getElementById('res-status');
+            statusBadge.innerText = sol.status;
+            statusBadge.className = `px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(sol.status)}`;
+
+            // Renderizar Histórico
+            const histContainer = document.getElementById('res-historico');
+            histContainer.innerHTML = '';
+            
+            let historicoList = sol.historico || [{ status_novo: sol.status, observacao: 'Solicitação registrada no sistema.', created_at: sol.created_at }];
+            
+            historicoList.forEach(h => {
+                histContainer.innerHTML += `
+                    <div class="relative pl-4">
+                        <div class="absolute -left-[5px] top-1.5 w-2.5 h-2.5 rounded-full bg-blue-600"></div>
+                        <p class="text-xs font-bold text-gray-800">${h.status_novo}</p>
+                        <p class="text-xs text-gray-600">${h.observacao || 'Sem observações.'}</p>
+                        <span class="text-[10px] text-gray-400">${new Date(h.created_at).toLocaleString('pt-BR')}</span>
+                    </div>
+                `;
+            });
+        }
+
+        // Carregar dados do Painel Administrativo
+        async function carregarDadosPainel() {
+            let dados = [];
+
+            if (supabaseClient) {
+                const { data } = await supabaseClient
+                    .from('solicitacoes')
+                    .select('*, locais(ambiente), categorias(nome)')
+                    .order('created_at', { ascending: false });
+                if (data) dados = data;
+            } else {
+                dados = mockSolicitacoes;
+            }
+
+            listaGlobalSolicitacoes = dados;
+
+            // Atualizar Indicadores
+            document.getElementById('stat-total').innerText = dados.length;
+            document.getElementById('stat-abertas').innerText = dados.filter(d => d.status === 'Aberta').length;
+            document.getElementById('stat-analise').innerText = dados.filter(d => d.status === 'Em análise').length;
+            document.getElementById('stat-atendimento').innerText = dados.filter(d => d.status === 'Em atendimento' || d.status === 'Aguardando atendimento').length;
+            document.getElementById('stat-concluidas').innerText = dados.filter(d => d.status === 'Concluída').length;
+            document.getElementById('stat-urgentes').innerText = dados.filter(d => d.prioridade === 'Urgente').length;
+
+            renderizarTabela(dados);
+        }
+
+        function renderizarTabela(dados) {
+            const tbody = document.getElementById('tabela-solicitacoes');
+            tbody.innerHTML = '';
+
+            if (dados.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-gray-500">Nenhuma solicitação encontrada.</td></tr>`;
+                return;
+            }
+
+            dados.forEach(d => {
+                const podeEditar = currentRole === 'ADMINISTRADOR' || currentRole === 'TECNICO';
+                tbody.innerHTML += `
+                    <tr class="hover:bg-gray-50 transition">
+                        <td class="p-3 font-semibold text-blue-600">${d.protocolo}</td>
+                        <td class="p-3">
+                            <p class="font-bold text-gray-900">${d.titulo}</p>
+                            <p class="text-xs text-gray-500">${d.locais?.ambiente || 'Local'}</p>
+                        </td>
+                        <td class="p-3 text-xs text-gray-600">${d.categorias?.nome || 'Geral'}</td>
+                        <td class="p-3"><span class="px-2 py-0.5 rounded text-xs font-semibold ${getPrioridadeColor(d.prioridade)}">${d.prioridade}</span></td>
+                        <td class="p-3"><span class="px-2.5 py-1 rounded-full text-xs font-semibold ${getStatusColor(d.status)}">${d.status}</span></td>
+                        <td class="p-3">
+                            <button onclick="consultarDePainel('${d.protocolo}')" class="text-blue-600 hover:text-blue-800 mr-2 text-xs font-semibold"><i class="fa-solid fa-eye"></i> Ver</button>
+                            ${podeEditar ? `<button onclick="abrirModalAtualizar('${d.id}', '${d.status}')" class="text-emerald-600 hover:text-emerald-800 text-xs font-semibold"><i class="fa-solid fa-pen-to-square"></i> Editar</button>` : ''}
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function filtrarTabela() {
+            const status = document.getElementById('filtro-status').value;
+            const prioridade = document.getElementById('filtro-prioridade').value;
+
+            let filtrados = listaGlobalSolicitacoes;
+            if (status) filtrados = filtrados.filter(d => d.status === status);
+            if (prioridade) filtrados = filtrados.filter(d => d.prioridade === prioridade);
+
+            renderizarTabela(filtrados);
+        }
+
+        function consultarDePainel(protocolo) {
+            navigate('consultar');
+            document.getElementById('input-protocolo').value = protocolo;
+            consultarProtocolo();
+        }
+
+        function abrirModalAtualizar(id, statusAtual) {
+            if (currentRole === 'SOLICITANTE') {
+                alert('Seu perfil atual (Solicitante) não tem permissão para alterar o status.');
+                return;
+            }
+            document.getElementById('modal-solicitacao-id').value = id;
+            document.getElementById('modal-novo-status').value = statusAtual;
+            document.getElementById('modal-observacao').value = '';
+            document.getElementById('modal-atualizar').classList.remove('hidden');
+            document.getElementById('modal-atualizar').classList.add('flex');
+        }
+
+        function fecharModal() {
+            document.getElementById('modal-atualizar').classList.remove('flex');
+            document.getElementById('modal-atualizar').classList.add('hidden');
+        }
+
+        async function salvarAtualizacao() {
+            const id = document.getElementById('modal-solicitacao-id').value;
+            const novoStatus = document.getElementById('modal-novo-status').value;
+            const observacao = document.getElementById('modal-observacao').value;
+
+            if (!observacao) {
+                alert('Preencha a observação técnica.');
+                return;
+            }
+
+            if (supabaseClient) {
+                const { error } = await supabaseClient
+                    .from('solicitacoes')
+                    .update({ status: novoStatus, data_conclusao: novoStatus === 'Concluída' ? new Date() : null })
+                    .eq('id', id);
+
+                if (error) {
+                    alert('Erro ao atualizar: ' + error.message);
+                    return;
+                }
+            } else {
+                const sol = mockSolicitacoes.find(s => s.id === id);
+                if (sol) {
+                    sol.status = novoStatus;
+                    if (!sol.historico) sol.historico = [];
+                    sol.historico.push({ status_novo: novoStatus, observacao, created_at: new Date().toISOString(), usuarios: { nome: currentRole } });
+                }
+            }
+
+            fecharModal();
+            carregarDadosPainel();
+            alert('Atendimento atualizado com sucesso!');
+        }
+
+        function getStatusColor(status) {
+            switch(status) {
+                case 'Aberta': return 'bg-blue-100 text-blue-800';
+                case 'Em análise': return 'bg-amber-100 text-amber-800';
+                case 'Aguardando atendimento': return 'bg-orange-100 text-orange-800';
+                case 'Em atendimento': return 'bg-purple-100 text-purple-800';
+                case 'Concluída': return 'bg-emerald-100 text-emerald-800';
+                default: return 'bg-gray-100 text-gray-800';
+            }
+        }
+
+        function getPrioridadeColor(p) {
+            switch(p) {
+                case 'Urgente': return 'bg-red-100 text-red-800';
+                case 'Alta': return 'bg-orange-100 text-orange-800';
+                case 'Média': return 'bg-blue-100 text-blue-800';
+                case 'Baixa': return 'bg-gray-100 text-gray-800';
+                default: return 'bg-gray-100 text-gray-800';
+            }
+        }
+    </script>
+</body>
+</html>
